@@ -1,4 +1,7 @@
-use core::borrow::Borrow;
+use core::fmt;
+use lazy_static::lazy_static;
+use spin::Mutex;
+use volatile::Volatile;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,6 +35,8 @@ impl ColorCode {
     }
 }
 
+/// repr(C) so that the memory of the Character type is laid out exactly how it looks
+/// (i.e. ascii_character first and color_code next.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 struct Character {
@@ -42,9 +47,22 @@ struct Character {
 const BUFFER_WIDTH: usize = 80;
 const BUFFER_HEIGHT: usize = 25;
 
+/// Lazy static to initialize the Writer on its first usage and Mutex because we want to avoid
+/// multiple threads trying to write to the VGA buffer at the same time.
+lazy_static! {
+    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
+        row_position: 0,
+        column_position: 0,
+        color_code: ColorCode::new(Color::LightCyan, Color::Black),
+        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+    });
+}
+
+/// repr(transparent) so that this Buffer type is treated just like the multidimensional
+/// character array that it contains.
 #[repr(transparent)]
 struct Buffer {
-    chars: [[Character; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    chars: [[Volatile<Character>; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
 
 pub struct Writer {
@@ -63,10 +81,10 @@ impl Writer {
                     self.new_line();
                 }
 
-                self.buffer.chars[self.row_position][self.column_position] = Character {
+                self.buffer.chars[self.row_position][self.column_position].write(Character {
                     ascii_character: byte,
                     color_code: self.color_code,
-                };
+                });
 
                 self.column_position += 1;
             }
@@ -76,28 +94,66 @@ impl Writer {
     pub fn write_string(&mut self, s: &str) {
         for byte in s.bytes() {
             match byte {
-                0x20..=0x7e => self.write_byte(byte),
+                // We can handle printable (0x20..=0x7e) and LF (\n newline) characters.
+                0x20..=0x7e | 0x0a => self.write_byte(byte),
                 _ => self.write_byte(0xfe),
             }
         }
     }
 
     fn new_line(&mut self) {
-        self.row_position += 1;
         self.column_position = 0;
+        self.row_position += 1;
+        let last_row_index = BUFFER_HEIGHT - 1;
+
+        // We passed the end of the visible screen region so we need to shift all rows up and clear
+        // the last row.
+        if self.row_position > last_row_index {
+            self.row_position = last_row_index;
+            for row in 1..BUFFER_HEIGHT {
+                for col in 0..BUFFER_WIDTH {
+                    let character = self.buffer.chars[row][col].read();
+                    self.buffer.chars[row - 1][col].write(character);
+                }
+            }
+            self.clear_row(last_row_index);
+        }
+    }
+
+    fn clear_row(&mut self, row: usize) {
+        for col in 0..BUFFER_WIDTH {
+            self.buffer.chars[row][col].write(Character {
+                color_code: self.color_code,
+                ascii_character: b' ',
+            })
+        }
     }
 }
 
-pub fn test_printing() {
-    let mut writer = Writer {
-        row_position: 0,
-        column_position: 0,
-        color_code: ColorCode::new(Color::Yellow, Color::Black),
-        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
-    };
+/// Gives us the ability to use write! with our VGA Writer.
+impl fmt::Write for Writer {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.write_string(s);
+        Ok(())
+    }
+}
 
-    writer.write_byte(b'H');
-    writer.write_string("ello ");
-    writer.new_line();
-    writer.write_string("Wörld!");
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::vga::_print(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
+
+/// Marked as pub so that the calls to println! and print! outside of this module can still
+/// invoke it. Marked as doc(hidden) though and prefixed with underscore so that calling code
+/// outside of this module knows that it shouldn't use this function directly.
+#[doc(hidden)]
+pub fn _print(args: fmt::Arguments) {
+    use core::fmt::Write;
+    WRITER.lock().write_fmt(args).unwrap();
 }

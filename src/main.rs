@@ -3,7 +3,6 @@
 
 mod vga;
 
-use crate::vga::test_printing;
 use core::panic::PanicInfo;
 
 static HELLO: &[u8] = b"Kernel running!";
@@ -15,6 +14,11 @@ fn panic(_info: &PanicInfo) -> ! {
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    test_printing();
+    use core::fmt::Write;
+
+    for i in 0..50 {
+        println!("Row: {}", i);
+    }
+
     loop {}
 }
