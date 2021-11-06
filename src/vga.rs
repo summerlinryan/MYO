@@ -120,13 +120,18 @@ impl Writer {
         }
     }
 
-    fn clear_row(&mut self, row: usize) {
+    pub fn clear_row(&mut self, row: usize) {
         for col in 0..BUFFER_WIDTH {
             self.buffer.chars[row][col].write(Character {
                 color_code: self.color_code,
                 ascii_character: b' ',
             })
         }
+    }
+
+    pub fn set_position(&mut self, row: usize, col: usize) {
+        self.row_position = row;
+        self.column_position = col;
     }
 }
 
@@ -156,4 +161,42 @@ macro_rules! println {
 pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
     WRITER.lock().write_fmt(args).unwrap();
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::vga::{Writer, BUFFER_HEIGHT, BUFFER_WIDTH, WRITER};
+    use crate::{print, println};
+    use crate::{serial_print, serial_println};
+
+    #[test_case]
+    fn println_no_panic() {
+        WRITER.lock().set_position(0, 0);
+        println!("test");
+    }
+
+    #[test_case]
+    fn println_off_screen_no_panic() {
+        WRITER.lock().set_position(0, 0);
+        for _ in 0..BUFFER_HEIGHT + 1 {
+            println!("test")
+        }
+    }
+
+    #[test_case]
+    fn println_non_ascii_character_no_panic() {
+        WRITER.lock().set_position(0, 0);
+        println!("ö");
+    }
+
+    #[test_case]
+    fn println_output() {
+        WRITER.lock().set_position(0, 0);
+        let s = "Some test string that fits on a single line";
+        print!("{}", s);
+        for (index, char) in s.chars().enumerate() {
+            let vga_character = WRITER.lock().buffer.chars[0][index].read();
+            assert_eq!(char::from(vga_character.ascii_character), char);
+        }
+    }
 }
