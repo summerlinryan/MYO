@@ -26,5 +26,8 @@ pub extern "C" fn _start() -> ! {
 
     #[cfg(not(test))]
     println!("Kernel starting...");
+
+    kernel_core::init();
+
     loop {}
 }
