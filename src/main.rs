@@ -4,12 +4,13 @@
 #![test_runner(crate::testing::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-mod qemu;
-mod serial;
-mod testing;
-mod vga;
+use kernel_core::qemu;
+use kernel_core::serial;
+use kernel_core::vga;
+use kernel_core::{print, println};
 
 use core::panic::PanicInfo;
+extern crate core;
 
 #[cfg(not(test))]
 #[panic_handler]
