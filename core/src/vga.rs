@@ -47,8 +47,8 @@ struct Character {
 const BUFFER_WIDTH: usize = 80;
 const BUFFER_HEIGHT: usize = 25;
 
-/// Lazy static to initialize the Writer on its first usage and Mutex because we want to avoid
-/// multiple threads trying to write to the VGA buffer at the same time.
+// Lazy static to initialize the Writer on its first usage and Mutex because we want to avoid
+// multiple threads trying to write to the VGA buffer at the same time.
 lazy_static! {
     pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
         row_position: 0,
@@ -58,8 +58,8 @@ lazy_static! {
     });
 }
 
-/// repr(transparent) so that this Buffer type is treated just like the multidimensional
-/// character array that it contains.
+// repr(transparent) so that this Buffer type is treated just like the multidimensional
+// character array that it contains.
 #[repr(transparent)]
 struct Buffer {
     chars: [[Volatile<Character>; BUFFER_WIDTH]; BUFFER_HEIGHT],
@@ -135,7 +135,7 @@ impl Writer {
     }
 }
 
-/// Gives us the ability to use write! with our VGA Writer.
+// Gives us the ability to use write! with our VGA Writer.
 impl fmt::Write for Writer {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.write_string(s);
@@ -154,9 +154,9 @@ macro_rules! println {
     ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
 }
 
-/// Marked as pub so that the calls to println! and print! outside of this module can still
-/// invoke it. Marked as doc(hidden) though and prefixed with underscore so that calling code
-/// outside of this module knows that it shouldn't use this function directly.
+// Marked as pub so that the calls to println! and print! outside of this module can still
+// invoke it. Marked as doc(hidden) though and prefixed with underscore so that calling code
+// outside of this module knows that it shouldn't use this function directly.
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;

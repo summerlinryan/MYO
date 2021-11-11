@@ -14,3 +14,13 @@ kernel_core = {package = "core", path = "./core"}
 [package.metadata.bootimage]
 test-args = ["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-serial", "stdio", "-display", "none"]
 test-success-exit-code = 33 # (Same as (QemuExitCode::Success << 1 | 1))
+
+[[test]]
+name = "stack_overflow"
+harness = false
+
+[dev-dependencies]
+spin = "0.5.2"
+volatile = "0.2.6" # TODO: Figure out how to use latest (0.4.4)
+lazy_static = "1.4.0"
+x86_64 = "0.14.6"

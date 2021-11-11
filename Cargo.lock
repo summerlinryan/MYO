@@ -46,6 +46,10 @@ version = "0.1.0"
 dependencies = [
  "bootloader",
  "core",
+ "lazy_static",
+ "spin",
+ "volatile 0.2.7",
+ "x86_64",
 ]
 
 [[package]]
