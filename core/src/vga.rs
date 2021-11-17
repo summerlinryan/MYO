@@ -165,9 +165,8 @@ pub fn _print(args: fmt::Arguments) {
 
 #[cfg(test)]
 mod tests {
-    use crate::vga::{Writer, BUFFER_HEIGHT, BUFFER_WIDTH, WRITER};
+    use crate::vga::{BUFFER_HEIGHT, WRITER};
     use crate::{print, println};
-    use crate::{serial_print, serial_println};
 
     #[test_case]
     fn println_no_panic() {

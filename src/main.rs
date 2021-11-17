@@ -4,25 +4,15 @@
 #![test_runner(kernel_core::test::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-use kernel_core::println;
-
 use core::panic::PanicInfo;
-use kernel_core::qemu::{exit_qemu, QemuExitCode};
-use kernel_core::serial_println;
+
+#[cfg(not(test))]
+use kernel_core::println;
 
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
-    loop {}
-}
-
-#[cfg(test)]
-#[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    serial_println!("[failed]\n");
-    serial_println!("Error: {}\n", info);
-    exit_qemu(QemuExitCode::Failed);
     loop {}
 }
 
@@ -36,12 +26,17 @@ pub extern "C" fn _start() -> ! {
 
     kernel_core::init();
 
-    #[allow(unconditional_recursion)]
-    fn stack_overflow() {
-        stack_overflow(); // for each recursion, the return address is pushed
-    }
+    loop {}
+}
 
-    stack_overflow();
+#[cfg(test)]
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    use kernel_core::qemu::{exit_qemu, QemuExitCode};
+    use kernel_core::serial_println;
 
+    serial_println!("[failed]\n");
+    serial_println!("Error: {}\n", info);
+    exit_qemu(QemuExitCode::Failed);
     loop {}
 }

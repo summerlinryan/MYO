@@ -19,6 +19,7 @@ lazy_static! {
 }
 
 pub fn init_idt() {
+    println!("Initializing interrupt descriptor table...");
     IDT.load();
 }
 

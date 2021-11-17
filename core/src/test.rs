@@ -1,3 +1,6 @@
+#[cfg(test)]
+use core::panic::PanicInfo;
+
 use crate::qemu::{exit_qemu, QemuExitCode};
 use crate::{serial_print, serial_println};
 
@@ -22,4 +25,13 @@ pub fn test_runner(test_functions: &[&dyn Testable]) {
         test.run();
     }
     exit_qemu(QemuExitCode::Success);
+}
+
+#[cfg(test)]
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    serial_println!("[failed]\n");
+    serial_println!("Error: {}\n", info);
+    exit_qemu(QemuExitCode::Failed);
+    loop {}
 }
