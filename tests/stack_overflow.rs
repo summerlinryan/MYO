@@ -36,7 +36,7 @@ pub fn init_test_idt() {
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    serial_print!("stack_overflow::stack_overflow...\t");
+    serial_print!("stack_overflow::stack_overflow...");
 
     kernel_core::gdt::init();
     init_test_idt();
@@ -56,5 +56,6 @@ fn stack_overflow() {
 #[panic_handler]
 pub fn panic_handler(info: &PanicInfo) -> ! {
     serial_println!("Panic: {}", info);
+    exit_qemu(QemuExitCode::Failed);
     loop {}
 }
